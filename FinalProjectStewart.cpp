@@ -21,6 +21,10 @@
 using namespace std;
 time_t now = time(0);
 
+const int monthDays[12]
+    = { 31, 28, 31, 30, 31, 30, 
+       31, 31, 30, 31, 30, 31 };
+
 class Inventory{
     private:
     string name;
@@ -44,6 +48,7 @@ class Inventory{
     int GetSKU(){return this->SKU;}
     double GetPrice(){return this->price;}
     int GetStock(){return this->stock;}
+    string ToString(){return name + "," + to_string(SKU) + "," + to_string(price) + "," + to_string(stock);}
 };
 
 class Delivery{
@@ -51,7 +56,8 @@ class Delivery{
     string contact;
     string address;
     string phone;
-    tm *schedule = localtime(&now);
+    int schedule = 0;
+    string schedString;
     list <Inventory> items;
     public:
     //Constructors
@@ -59,31 +65,107 @@ class Delivery{
     Delivery(string c){this->contact = c;}
     Delivery(string c, string a){this->contact = c; this->address = a;}
     Delivery(string c, string a, string p){this->contact = c; this->address = a; this->phone = p;}
+    Delivery(string c, string a, string p, int s, string ss){
+        this->contact = c;
+        this->address = a;
+        this->phone = p;
+        this->schedule = s;
+        this->schedString = ss;
+    }
     //Setters
     void SetContact(string c){this->contact = c;}
     void SetAddress(string a){this->address = a;}
     void SetPhone(string p){this->phone = p;}
     void AddItem(Inventory i){this->items.push_back(i);}
     void SetSchedule(int year, int month, int day){
-        this->schedule->tm_year = year-1900;
-        this->schedule->tm_mon = month-1;
-        this->schedule->tm_mday = day;
+        schedString = to_string(month) + "/" + to_string(day) + "/" + to_string(year);
+        int days = 0;
+        days += (year-1900)*365;
+        for (int i = 0; i < month-1; i++){
+            days += monthDays[i];
+        }
+        days += day;
+        schedule = days;
     }
     //Getters
     string GetContact(){return contact;}
     string GetAddress(){return address;}
     string GetPhone(){return phone;}
     list<Inventory> GetItems(){return items;}
-    tm GetSchedule(){return *schedule;}
+    int GetSchedule(){return schedule;}
+    string GetSchedString(){return schedString;}
 };
 
 
 bool operator<(Delivery lhs, Delivery rhs){
-    return lhs.GetSchedule().tm_yday < rhs.GetSchedule().tm_yday;
+    return lhs.GetSchedule() < rhs.GetSchedule();
 }
 
 bool operator>(Delivery lhs, Delivery rhs){
-    return lhs.GetSchedule().tm_yday > rhs.GetSchedule().tm_yday;
+    return lhs.GetSchedule() > rhs.GetSchedule();
+}
+
+void ImportInventory(list<Inventory> &currStock){
+    fstream fInv;
+    fInv.open("inventory.csv", ios::in);
+    vector<string> row;
+    string line, word, temp;
+    bool endFile = false;
+    while (endFile == false){
+        row.clear();
+
+        getline(fInv, line);
+        stringstream s(line);
+
+        while (getline(s, word, ',')){
+            row.push_back(word);
+        }
+        currStock.push_back(Inventory(row[0], stoi(row[1]), stod(row[2]), stoi(row[3])));
+        if(fInv.eof()){endFile = true;}
+    }
+    fInv.close();
+}
+
+void UpdateInventory(){
+    
+}
+
+void ImportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &docket){
+    fstream fInv;
+    fInv.open("deliveries.csv", ios::in);
+    vector<string> row;
+    string line, name, SKU, price, stock, inv, word, temp;
+    bool endFile = false;
+    while (endFile == false){
+        row.clear();
+
+        getline(fInv, line);
+        stringstream s(line);
+
+        while (getline(s, word, ',')){
+            row.push_back(word);
+        }
+        if (row[5] == "0"){
+            unscheduled.push_back(Delivery(row[0], row[1], row[2], stoi(row[3]), row[4]));
+        } else {
+            Delivery *digorno = new Delivery(row[0], row[1], row[2], stoi(row[3]), row[4]);//The pizza reference was the only way for me to keep it straight in my head.
+            stringstream sinv(row[5]);
+            while (getline(sinv, inv, ':')){
+                Inventory *pizza = new Inventory();
+                vector<string> invVec;
+                invVec.push_back(inv);
+                pizza->SetName(invVec[0]);
+                pizza->SetSKU(stoi(invVec[1]));
+                pizza->SetPrice(stod(invVec[2]));
+                pizza->SetStock(stoi(invVec[3]));
+                digorno->AddItem(*pizza);
+            }
+            docket.emplace(digorno);
+
+        }
+        if(fInv.eof()){endFile = true;}
+    }
+    fInv.close();
 }
 
 int main(){
@@ -91,15 +173,13 @@ int main(){
     list<Delivery> unscheduled;
     priority_queue<Delivery> docket;
 
-    time_t rawtime;
-    time(&rawtime);
-    struct tm * test;
-    test = localtime(&rawtime);
-    test->tm_mday = 20;
-    test->tm_mon = 2;
-    test->tm_year = 2023;
-    mktime(test);
+    ImportInventory(currentStock);
+    ImportDeliveries(unscheduled, docket);
 
-    cout << test->tm_yday;
+    bool guardian = true;
+    while (guardian == true){
+        
+    }
+
     return 0;
 }
