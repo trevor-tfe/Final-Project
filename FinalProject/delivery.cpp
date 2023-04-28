@@ -3,7 +3,9 @@
 #include <fstream>
 #include <sstream>
 
-const int monthDays[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+
+
 //Constructors
     Delivery::Delivery(std::string c){this->contact = c;}
     Delivery::Delivery(std::string c, std::string a){this->contact = c; this->address = a;}

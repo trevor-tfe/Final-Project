@@ -25,16 +25,6 @@
 #include <QApplication>
 using namespace std;
 
-inline
-    bool operator<(Delivery lhs, Delivery rhs){
-    return lhs.GetSchedule() < rhs.GetSchedule();
-}
-
-inline
-    bool operator>(Delivery lhs, Delivery rhs){
-    return lhs.GetSchedule() > rhs.GetSchedule();
-}
-
 //Takes a list and inserts inventory items into it.
 void ImportInventory(list<Inventory> &currStock){
     fstream fInv;
@@ -114,41 +104,6 @@ void ImportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &doc
     fInv.close();
 }
 
-void printNextDelivery(priority_queue<string> &docket){
-    cout << "Delivery Printing" << endl;
-    ofstream fout;
-    fout.open("delivery.txt");
-    Delivery del = docket.top();
-    list<Inventory> inv = del.GetItems();
-    docket.pop();
-
-    fout << "Contact: " << del.GetContact() << endl;
-    fout << "Address: " << del.GetAddress() << endl;
-    fout << "Phone: " << del.GetPhone() << endl;
-    fout << "_________________________________________" << endl;
-    fout << "Items" << endl;
-    for (auto it = inv.begin(); it != inv.end(); it++){
-        fout << "Item: " << it->GetName();
-        fout << " SKU: " << it->GetSKU();
-        fout << " Price: " << it->GetPrice();
-        fout << " Count: " << it->GetStock() << endl;
-    }
-}
-
-priority_queue<Delivery> createScheduledDelivery(string contact, string address, string phone, string schedule, priority_queue<Delivery> docket){
-    int month = stoi(schedule.substr(0, 1));
-    int day = stoi(schedule.substr(3, 4));
-    int year = stoi(schedule.substr(6, 9));
-    int days = 0;
-    days += (year-1900)*365;
-    for (int i = 0; i < month-1; i++){
-        days += monthDays[i];
-    }
-    days += day;
-    Delivery nd = Delivery(contact, address, phone, days, schedule);
-    docket.emplace(nd);
-    return docket;
-}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -165,16 +120,21 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->stackedWidget->setCurrentIndex(0);
 
-    QPushButton *AddDeliveryButton = new QPushButton;
-    QPushButton *GetDeliveryButton = new QPushButton;
-    QPushButton *PrintDeliveryButton = new QPushButton;
+//    QPushButton *AddDeliveryButton = new QPushButton;
+//    QPushButton *GetDeliveryButton = new QPushButton;
+//    QPushButton *PrintDeliveryButton = new QPushButton;
+//    QPushButton *addNewDelivery = new QPushButton;
 
-    connect(AddDeliveryButton, &QPushButton::clicked, this, [=](){
-        ui->stackedWidget->setCurrentIndex(0);
-    });
+    connect(ui->AddDeliveryButton, &QPushButton::clicked, [this]{ui->stackedWidget->setCurrentIndex(0);});
 
-    connect(GetDeliveryButton, &QPushButton::clicked, this, [=](){
+    connect(ui->GetDeliveryButton, &QPushButton::clicked, [this, &docket]{
+        Delivery dlv = docket.top();
         ui->stackedWidget->setCurrentIndex(1);
+        ui->AddressInfo->setText(QString::fromStdString(dlv.GetAddress()));
+        ui->ContactInfo->setText(QString::fromStdString(dlv.GetContact()));
+        ui->PhoneInfo->setText(QString::fromStdString(dlv.GetPhone()));
+        ui->ScheduleInfo->setText(QString::fromStdString(dlv.GetSchedString()));
+
     });
 
     string contact = ui->contactText->toPlainText().toStdString();
@@ -182,8 +142,8 @@ MainWindow::MainWindow(QWidget *parent)
     string phone = ui->phoneText->toPlainText().toStdString();
     string schedule = ui->scheduleInfo->text().toStdString();
 
-    QObject::connect(AddDeliveryButton, SIGNAL(clicked()), this, SLOT(docket = createScheduledDelivery(contact, address, phone, schedule, docket)));
-    QObject::connect(PrintDeliveryButton, SIGNAL(clicked()), this, SLOT(printNextDelivery(docket)));
+    connect(ui->addNewDelivery, SIGNAL(clicked()), this, SLOT(createScheduledDelivery(contact, address, phone, schedule, docket)));
+    connect(ui->PrintDeliveryButton, SIGNAL(clicked()), this, SLOT(printNextDelivery(docket)));
 }
 
 MainWindow::~MainWindow()
