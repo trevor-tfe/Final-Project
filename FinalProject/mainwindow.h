@@ -3,6 +3,16 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include "inventory.h"
+#include "delivery.h"
+#include <vector>
+#include <queue>
+#include <string>
+#include <chrono>
+#include <list>
+#include <iostream>
+#include <sstream>
+#include <fstream>
 
 
 
@@ -18,6 +28,10 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
+public slots:
+    std::priority_queue<Delivery> createScheduledDelivery(std::string contact, std::string address, std::string phone, std::string schedule, std::priority_queue<Delivery> docket);
+    void printNextDelivery(std::priority_queue<Delivery> &docket);
 
 private:
     Ui::MainWindow *ui;

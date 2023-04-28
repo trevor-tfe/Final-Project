@@ -19,103 +19,11 @@
 ***************************************************************/
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "main.cpp"
-#include <vector>
-#include <queue>
-#include <string>
-#include <chrono>
-#include <list>
-#include <iostream>
-#include <sstream>
-#include <fstream>
+#include "inventory.cpp"
+#include "delivery.cpp"
 #include "mainwindow.h"
 #include <QApplication>
 using namespace std;
-
-const int monthDays[12]
-    = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-
-class Inventory{
-private:
-    string name;
-    int SKU;
-    double price;
-    int stock;
-public:
-    //CONSTRUCTORS
-    Inventory(){}
-    Inventory(string s){this->name = s;}
-    Inventory(string s, int k){this->name = s; this->SKU = k;}
-    Inventory(string s, int k, double p){this->name = s; this->SKU = k; this->price = p;}
-    Inventory(string s, int k, double p, int st){this->name = s; this->SKU = k; this->price = p; this->stock = st;}
-    //SETTERS
-    void SetName(string s){this->name = s;}
-    void SetSKU(int k){this->SKU = k;}
-    void SetPrice(double p){this->price = p;}
-    void SetStock(int s){this->stock = s;}
-    //GETTERS
-    string GetName(){return this->name;}
-    int GetSKU(){return this->SKU;}
-    double GetPrice(){return this->price;}
-    int GetStock(){return this->stock;}
-    string ToString(){return name + "," + to_string(SKU) + "," + to_string(price) + "," + to_string(stock);}
-};
-
-class Delivery{
-private:
-    string contact;
-    string address;
-    string phone;
-    int schedule = 0;
-    string schedString;
-    list <Inventory> items;
-public:
-    //Constructors
-    Delivery(){}
-    Delivery(string c){this->contact = c;}
-    Delivery(string c, string a){this->contact = c; this->address = a;}
-    Delivery(string c, string a, string p){this->contact = c; this->address = a; this->phone = p;}
-    Delivery(string c, string a, string p, int s, string ss){
-        this->contact = c;
-        this->address = a;
-        this->phone = p;
-        this->schedule = s;
-        this->schedString = ss;
-    }
-    //Setters
-    void SetContact(string c){this->contact = c;}
-    void SetAddress(string a){this->address = a;}
-    void SetPhone(string p){this->phone = p;}
-    void AddItem(Inventory i){this->items.push_back(i);}
-    void AddItemList(string s, list<Inventory> stock){
-        stringstream ss(s);
-        string word;
-
-        while (ss >> word){
-            for (auto it = stock.begin(); it != stock.end(); it++){
-                if (it->GetName() == word){AddItem(*it);}
-            }
-        }
-    }
-    void SetSchedule(int year, int month, int day){
-        schedString = to_string(month) + "/" + to_string(day) + "/" + to_string(year);
-        int days = 0;
-        days += (year-1900)*365;
-        for (int i = 0; i < month-1; i++){
-            days += monthDays[i];
-        }
-        days += day;
-        schedule = days;
-    }
-    void SetSchedString(string ss){schedString = ss;}
-    //Getters
-    string GetContact(){return contact;}
-    string GetAddress(){return address;}
-    string GetPhone(){return phone;}
-    list<Inventory> GetItems(){return items;}
-    int GetSchedule(){return schedule;}
-    string GetSchedString(){return schedString;}
-};
 
 inline
     bool operator<(Delivery lhs, Delivery rhs){
@@ -171,8 +79,9 @@ void ImportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &doc
     fInv.open("deliveries.csv", ios::in);
     string row[6] = {"Error", "Incorrect Road", "45012", "04/27/2023", "Chair:50504:24.56:5"};
     string line, inv, word, temp;
-    while (!fInv.eof()){
-
+    int attempts = 0;
+    while (!fInv.eof() && attempts < 10){
+        attempts++;
         getline(fInv, line);
         stringstream s(line);
         int it = 0;
@@ -203,6 +112,27 @@ void ImportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &doc
         }
     }
     fInv.close();
+}
+
+void printNextDelivery(priority_queue<string> &docket){
+    cout << "Delivery Printing" << endl;
+    ofstream fout;
+    fout.open("delivery.txt");
+    Delivery del = docket.top();
+    list<Inventory> inv = del.GetItems();
+    docket.pop();
+
+    fout << "Contact: " << del.GetContact() << endl;
+    fout << "Address: " << del.GetAddress() << endl;
+    fout << "Phone: " << del.GetPhone() << endl;
+    fout << "_________________________________________" << endl;
+    fout << "Items" << endl;
+    for (auto it = inv.begin(); it != inv.end(); it++){
+        fout << "Item: " << it->GetName();
+        fout << " SKU: " << it->GetSKU();
+        fout << " Price: " << it->GetPrice();
+        fout << " Count: " << it->GetStock() << endl;
+    }
 }
 
 priority_queue<Delivery> createScheduledDelivery(string contact, string address, string phone, string schedule, priority_queue<Delivery> docket){
@@ -237,6 +167,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     QPushButton *AddDeliveryButton = new QPushButton;
     QPushButton *GetDeliveryButton = new QPushButton;
+    QPushButton *PrintDeliveryButton = new QPushButton;
+
     connect(AddDeliveryButton, &QPushButton::clicked, this, [=](){
         ui->stackedWidget->setCurrentIndex(0);
     });
@@ -249,7 +181,9 @@ MainWindow::MainWindow(QWidget *parent)
     string address = ui->addressText->toPlainText().toStdString();
     string phone = ui->phoneText->toPlainText().toStdString();
     string schedule = ui->scheduleInfo->text().toStdString();
-    connect(AddDeliveryButton, SIGNAL(clicked), this, SLOT(docket = createScheduledDelivery(contact, address, phone, schedule, docket)));
+
+    QObject::connect(AddDeliveryButton, SIGNAL(clicked()), this, SLOT(docket = createScheduledDelivery(contact, address, phone, schedule, docket)));
+    QObject::connect(PrintDeliveryButton, SIGNAL(clicked()), this, SLOT(printNextDelivery(docket)));
 }
 
 MainWindow::~MainWindow()
