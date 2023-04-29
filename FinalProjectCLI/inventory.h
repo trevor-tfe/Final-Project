@@ -21,8 +21,6 @@
 #define INVENTORY_H
 #include <string>
 
-
-
 class Inventory
 {
 private:
@@ -31,7 +29,7 @@ private:
     double price;
     int stock;
 public:
-    Inventory();
+    Inventory(){};
     Inventory(std::string s);
     Inventory(std::string s, int k);
     Inventory(std::string s, int k, double p);

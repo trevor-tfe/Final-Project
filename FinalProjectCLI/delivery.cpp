@@ -21,9 +21,6 @@
 #include <fstream>
 #include <sstream>
 
-
-
-
 //Constructors
     Delivery::Delivery(std::string c){this->contact = c;}
     Delivery::Delivery(std::string c, std::string a){this->contact = c; this->address = a;}

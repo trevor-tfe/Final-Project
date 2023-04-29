@@ -60,11 +60,21 @@ using namespace std;
 //     fInv.close();
 // }
 
+
+//Boolean operators so priority queues can place deliveries in schedule.
+    bool operator<(Delivery lhs, Delivery rhs){
+        return lhs.GetSchedule() < rhs.GetSchedule();
+}
+
+    bool operator>(Delivery lhs, Delivery rhs){
+        return lhs.GetSchedule() > rhs.GetSchedule();
+}
+
 void ImportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &docket){
-    fstream fInv;
+    fstream fInv;//Stringstream for deliveries
     fInv.open("deliveries.csv", ios::in);
-    string line, inv, word, temp;
-    int attempts = 0;
+    string line, linv, inv, word, temp;
+    int attempts = 0;//Prevents infinite loops originally encountered in Qt (for some reason).
     while (!fInv.eof() && attempts < 10){
         string row[6] = {"Error", "Incorrect Road", "45012", "04/27/2023", "Chair:50504:24.56:5"};
         attempts++;
@@ -78,21 +88,28 @@ void ImportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &doc
             it++;
         }
         //0: Name, 1: Address, 2: Phone, 3: Schedule, 4: Schedule String, 5: Inventory
-        if (row[5] == "0"){
+        if (row[3] == "-693500"){
+            //Permanently add it to unscheduled
             unscheduled.push_back(Delivery(row[0], row[1], row[2], stoi(row[3]), row[4]));
         } else {
+            //Temporarily add it to unscheduled
             unscheduled.push_back(Delivery(row[0], row[1], row[2], stoi(row[3]), row[4]));
             stringstream sinv(row[5]);
             string invVec[4] = {"Chair","50504","24.56","5"};
             int vit = 0;
-            while (getline(sinv, inv, ':')){
+            //Gets inventory line and breaks it down by its deliminators
+            while (getline(sinv, linv, '|')){
+                stringstream slinv;
+                slinv.str(linv);
+                while (getline(slinv, inv, ':')){
                 //1. Name, 2. SKU, 3. Price, 4. Stock
-                if (vit < 4){
-                    invVec[vit] = inv;
-                    vit++;
+                    if (vit < 4){
+                        invVec[vit] = inv;
+                        vit++;
+                    }
                 }
+                unscheduled.back().AddItem(Inventory(invVec[0], stoi(invVec[1]), stod(invVec[2]), stoi(invVec[3])));
             }
-            unscheduled.back().AddItem(Inventory(invVec[0], stoi(invVec[1]), stod(invVec[2]), stoi(invVec[3])));
             docket.emplace(unscheduled.back());
             unscheduled.pop_back();
         }
@@ -111,7 +128,7 @@ char mainMenu(){
 }
 
 //Walks user through entering new delivery
-char addNewDelivery(priority_queue<Delivery> &docket){
+char addNewDelivery(list<Delivery> &unscheduled, priority_queue<Delivery> &docket){
     char input = ' ';
     Delivery *newDel = new Delivery();
     cout << "Do you want to enter a delivery? y/n: ";
@@ -165,7 +182,8 @@ char addNewDelivery(priority_queue<Delivery> &docket){
         //add delivery to the docket
         cout << "would you like to add another delivery? y/n: ";
         cin >> input;
-        docket.emplace(*newDel);
+        if (newDel->GetSchedule() == -693500){unscheduled.push_back(*newDel);}
+        else {docket.emplace(*newDel);}
     }
     return input;
 }
@@ -182,7 +200,7 @@ char DisplayNextDelivery(priority_queue<Delivery> docket){
     cout << "_____Item List_____" << endl;
     for (auto it = tempList.begin(); it != tempList.end(); it++){
         cout << it->GetName() << ", SKU: " << it->GetSKU() << ", Price: $" << it->GetPrice() << ", Quantity: " << it->GetStock() << endl;
-        total += it->GetPrice();
+        total += (it->GetPrice() * it->GetStock());
     }
     cout << "Total: $" << total << endl;
     return input;
@@ -190,10 +208,63 @@ char DisplayNextDelivery(priority_queue<Delivery> docket){
 
 char PrintDeliverySlip(priority_queue<Delivery> &docket){
     char input = 'N';
-
+    Delivery temp = docket.top();
+    list<Inventory> tempList = temp.GetItems();
+    ofstream receipt;
+    int total = 0;
+    receipt.open("receipt.txt");
+    receipt << "Contact:  " << temp.GetContact() << "\n";
+    receipt << "Address:  " << temp.GetAddress() << "\n";
+    receipt << "Phone #:  " << temp.GetPhone() << "\n";
+    receipt << "Schedule: " << temp.GetSchedString() << "\n";
+    receipt << "_____Item List_____" << "\n";
+    for (auto it = tempList.begin(); it != tempList.end(); it++){
+        receipt << it->GetName() << ", SKU: " << it->GetSKU() << ", Price: $" << it->GetPrice() << ", Quantity: " << it->GetStock() << "\n";
+        total += (it->GetPrice() * it->GetStock());
+    }
+    receipt << "Total: $" << total << "\n";
+    receipt.close();
     return input;
 }
 
+void ExportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &docket){
+    ofstream deliFile;
+    deliFile.open("deliveries.csv", ios::out | ios::trunc); //To ensure that file is overwritten rather than added to.
+    //Add unscheduled deliveries first
+    for (auto it = unscheduled.begin(); it != unscheduled.end(); it++){
+        list<Inventory> items;
+        deliFile << it->GetContact() << ",";
+        deliFile << it->GetAddress() << ",";
+        deliFile << it->GetPhone() << ",";
+        deliFile << "-693500,0/0/0000,";//Autofill default values for no schedule
+        items = it->GetItems();
+        for (auto ems = items.begin(); ems != items.end(); ems++){
+            if (ems != items.begin()){deliFile << "|";}//Place vertical line between items in delivery
+            deliFile << ems->GetName() << ":";
+            deliFile << ems->GetSKU() << ":";
+            deliFile << ems->GetPrice() << ":";
+            deliFile << ems->GetStock() << ":";
+        }
+    }
+    while (!docket.empty()){
+        Delivery dvy = docket.top();
+        docket.pop();
+        list<Inventory> items;
+        deliFile << dvy.GetContact() << ",";
+        deliFile << dvy.GetAddress() << ",";
+        deliFile << dvy.GetPhone() << ",";
+        deliFile << dvy.GetSchedule() << ",";
+        deliFile << dvy.GetSchedString() << ",";
+        items = dvy.GetItems();
+        for (auto ems = items.begin(); ems != items.end(); ems++){
+            if (ems != items.begin()){deliFile << "|";}//Place vertical line between items in delivery
+            deliFile << ems->GetName() << ":";
+            deliFile << ems->GetSKU() << ":";
+            deliFile << ems->GetPrice() << ":";
+            deliFile << ems->GetStock() << ":";
+        }
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -211,12 +282,13 @@ int main(int argc, char *argv[])
         while (input != 'q' && input != 'Q'){
             input = mainMenu();
             while (input != 'n' && input != 'N' && input != 'q' && input != 'Q'){
-                if (input == '1'){input = addNewDelivery(docket);}
-                if (input == '2'){}
-                if (input == '3'){}
+                if (input == '1'){input = addNewDelivery(unscheduled, docket);}
+                if (input == '2'){input = DisplayNextDelivery(docket);}
+                if (input == '3'){input = PrintDeliverySlip(docket);}
             }
         }
-
+        cout << "Exporting deliveries" << endl;
+        ExportDeliveries(unscheduled, docket);
     } catch (exception x){
         cout << x.what();
     }

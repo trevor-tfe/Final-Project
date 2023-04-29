@@ -21,7 +21,7 @@
 #define DELIVERY_H
 #include <string>
 #include <list>
-#include <inventory.h>
+#include "inventory.h"
 
 const int monthDays[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
@@ -58,15 +58,5 @@ class Delivery
         int GetSchedule();
         std::string GetSchedString();
 };
-
-inline
-    bool operator<(Delivery lhs, Delivery rhs){
-        return lhs.GetSchedule() < rhs.GetSchedule();
-}
-
-inline
-    bool operator>(Delivery lhs, Delivery rhs){
-        return lhs.GetSchedule() > rhs.GetSchedule();
-}
 
 #endif // DELIVERY_H
