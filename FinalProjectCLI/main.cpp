@@ -212,17 +212,22 @@ char PrintDeliverySlip(priority_queue<Delivery> &docket){
     list<Inventory> tempList = temp.GetItems();
     ofstream receipt;
     int total = 0;
+    //Opens text file instead of sending it to a printer.
     receipt.open("receipt.txt");
+    //Prints out customer information
     receipt << "Contact:  " << temp.GetContact() << "\n";
     receipt << "Address:  " << temp.GetAddress() << "\n";
     receipt << "Phone #:  " << temp.GetPhone() << "\n";
     receipt << "Schedule: " << temp.GetSchedString() << "\n";
+    //Prints out items to be included in delivery. 
     receipt << "_____Item List_____" << "\n";
     for (auto it = tempList.begin(); it != tempList.end(); it++){
         receipt << it->GetName() << ", SKU: " << it->GetSKU() << ", Price: $" << it->GetPrice() << ", Quantity: " << it->GetStock() << "\n";
         total += (it->GetPrice() * it->GetStock());
     }
+    //Prints total cost of goods shipped in delivery
     receipt << "Total: $" << total << "\n";
+    //Closes file
     receipt.close();
     return input;
 }
@@ -246,6 +251,7 @@ void ExportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &doc
             deliFile << ems->GetStock() << ":";
         }
     }
+    //Empties priority queue into csv in a format that can be retrieved. 
     while (!docket.empty()){
         Delivery dvy = docket.top();
         docket.pop();
@@ -274,7 +280,9 @@ int main(int argc, char *argv[])
     try {
         ImportDeliveries(unscheduled, docket);
 
+        //Initalize a new delivery.
         Delivery bigDelivery = Delivery("DMACC", "2006 S Ankeny Blvd, Ankeny, IA 50023", "(515) 964-6200", 45019, "5/4/2023");
+        //Add 2 new items to that delivery.
         bigDelivery.AddItem(Inventory("Desk", 40154, 56.62, 500));
         bigDelivery.AddItem(Inventory("Chair", 40155, 32.16, 1000));
         char input = ' ';
@@ -292,8 +300,6 @@ int main(int argc, char *argv[])
     } catch (exception x){
         cout << x.what();
     }
-
-
-
+    
     return 0;
 }
