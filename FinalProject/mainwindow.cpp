@@ -111,19 +111,19 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-//    list<Inventory> currentStock;
+    list<Inventory> currentStock;
     list<Delivery> unscheduled;
     priority_queue<Delivery> docket;
 
-//    ImportInventory(currentStock);
+    ImportInventory(currentStock);
     ImportDeliveries(unscheduled, docket);
 
     ui->stackedWidget->setCurrentIndex(0);
 
-//    QPushButton *AddDeliveryButton = new QPushButton;
-//    QPushButton *GetDeliveryButton = new QPushButton;
-//    QPushButton *PrintDeliveryButton = new QPushButton;
-//    QPushButton *addNewDelivery = new QPushButton;
+    QPushButton *AddDeliveryButton = new QPushButton;
+    QPushButton *GetDeliveryButton = new QPushButton;
+    QPushButton *PrintDeliveryButton = new QPushButton;
+    QPushButton *addNewDelivery = new QPushButton;
 
     connect(ui->AddDeliveryButton, &QPushButton::clicked, [this]{ui->stackedWidget->setCurrentIndex(0);});
 

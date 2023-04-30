@@ -1,7 +1,7 @@
-Contact:  ﻿Trevor
-Address:  2637 Kinsey
-Phone #:  5152660451
-Schedule: 04/27/2023
+Contact:  Dakota Washington
+Address:  1234 Test Rd. Des Moines IA
+Phone #:  515-151-5151
+Schedule: 4/30/2023
 _____Item List_____
-Chair, SKU: 50504, Price: $24.56, Quantity: 5
-Total: $24
+Lamp 151, SKU: 24136, Price: $24.99, Quantity: 3
+Total: $74

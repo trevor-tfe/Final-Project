@@ -70,14 +70,13 @@ using namespace std;
         return lhs.GetSchedule() > rhs.GetSchedule();
 }
 
-void ImportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &docket){
+void ImportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery, vector<Delivery>, greater<Delivery>> &docket){
     fstream fInv;//Stringstream for deliveries
     fInv.open("deliveries.csv", ios::in);
     string line, linv, inv, word, temp;
-    int attempts = 0;//Prevents infinite loops originally encountered in Qt (for some reason).
-    while (!fInv.eof() && attempts < 10){
+    while (!fInv.eof()){
         string row[6] = {"Error", "Incorrect Road", "45012", "04/27/2023", "Chair:50504:24.56:5"};
-        attempts++;
+
         getline(fInv, line);
         stringstream s(line);
         int it = 0;
@@ -128,12 +127,13 @@ char mainMenu(){
 }
 
 //Walks user through entering new delivery
-char addNewDelivery(list<Delivery> &unscheduled, priority_queue<Delivery> &docket){
+char addNewDelivery(list<Delivery> &unscheduled, priority_queue<Delivery, vector<Delivery>, greater<Delivery>> &docket){
     char input = ' ';
     Delivery *newDel = new Delivery();
     cout << "Do you want to enter a delivery? y/n: ";
     while (input != 'n' && input != 'N' && input != 'q' && input != 'Q'){
         cin >> input;
+        cin.sync();
         //Kicks user out to main menu.
         if (input == 'n' || input == 'N'){break;}
         string info = "";
@@ -141,45 +141,73 @@ char addNewDelivery(list<Delivery> &unscheduled, priority_queue<Delivery> &docke
         int month;
         int year;
         cout << "Enter Contact Name: ";
-        cin >> info;
+        getline(cin, info);
         newDel->SetContact(info);
         cout << "Enter Address: ";
-        cin >> info;
-        newDel->SetPhone(info);
+        cin.sync();
+        getline(cin, info);
+        newDel->SetAddress(info);
         cout << "Enter Phone Number: ";
-        cin >> info;
+        cin.sync();
+        getline(cin, info);
         newDel->SetPhone(info);
         cout << "Would you like to add inventory items now? y/n: ";
+        cin.sync();
         cin >> input;
+        cin.sync();
         //Begin adding items to delivery
         while (input != 'n' && input != 'N'){
             Inventory *newInv = new Inventory();
             //get item name
             cout << "Enter the item Name: ";
-            cin >> info;
+            cin.sync();
+            getline(cin, info);
             newInv->SetName(info);
 
             //get item SKU
             cout << "Enter item SKU (5 digits): ";
-            cin >> info;
+            cin.sync();
+            getline(cin, info);
             newInv->SetSKU(stoi(info));
 
             //get item price
             cout << "Enter item price: ";
-            cin >> info;
+            cin.sync();
+            getline(cin, info);
             newInv->SetPrice(stod(info));
 
             //get number shipped
             cout << "Enter amount shipped: ";
-            cin >> info;
+            cin.sync();
+            getline(cin, info);
             newInv->SetStock(stoi(info));
 
             //add item to delivery list
             newDel->AddItem(*newInv);
             cout << "Would you like to add another item to the delivered items? y/n: ";
+            cin.sync();
             cin >> input;
         }
         //add delivery to the docket
+        cout << "Would you like to schedule this delivery? y/n: ";
+        cin >> input;
+        cin.sync();
+        if (input == 'y' || input == 'Y'){
+            cout << "What year will this be delivered? ";
+            getline(cin, info);
+            year = stoi(info);
+            cin.sync();
+            cout << "What is the delivery month? ";
+            getline(cin, info);
+            month = stoi(info);
+            cin.sync();
+            cout << "And what day in month " << month << " will this delivery take place? ";
+            getline(cin, info);
+            day = stoi(info);
+            cin.sync();
+            newDel->SetSchedule(year, month, day);
+        }
+        cin.sync();
         cout << "would you like to add another delivery? y/n: ";
         cin >> input;
         if (newDel->GetSchedule() == -693500){unscheduled.push_back(*newDel);}
@@ -188,11 +216,12 @@ char addNewDelivery(list<Delivery> &unscheduled, priority_queue<Delivery> &docke
     return input;
 }
 
-char DisplayNextDelivery(priority_queue<Delivery> docket){
+char DisplayNextDelivery(priority_queue<Delivery, vector<Delivery>, greater<Delivery>> docket){
+    cin.sync();
     char input = 'n';
     Delivery temp = docket.top();
     list<Inventory> tempList = temp.GetItems();
-    int total = 0;
+    double total = 0;
     cout << "Contact:  " << temp.GetContact() << endl;
     cout << "Address:  " << temp.GetAddress() << endl;
     cout << "Phone #:  " << temp.GetPhone() << endl;
@@ -206,12 +235,14 @@ char DisplayNextDelivery(priority_queue<Delivery> docket){
     return input;
 }
 
-char PrintDeliverySlip(priority_queue<Delivery> &docket){
+char PrintDeliverySlip(priority_queue<Delivery, vector<Delivery>, greater<Delivery>> &docket){
+    cin.sync();
     char input = 'N';
     Delivery temp = docket.top();
+    docket.pop();
     list<Inventory> tempList = temp.GetItems();
     ofstream receipt;
-    int total = 0;
+    double total = 0;
     //Opens text file instead of sending it to a printer.
     receipt.open("receipt.txt");
     //Prints out customer information
@@ -232,7 +263,7 @@ char PrintDeliverySlip(priority_queue<Delivery> &docket){
     return input;
 }
 
-void ExportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &docket){
+void ExportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery, vector<Delivery>, greater<Delivery>> &docket){
     ofstream deliFile;
     deliFile.open("deliveries.csv", ios::out | ios::trunc); //To ensure that file is overwritten rather than added to.
     //Add unscheduled deliveries first
@@ -250,6 +281,7 @@ void ExportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &doc
             deliFile << ems->GetPrice() << ":";
             deliFile << ems->GetStock() << ":";
         }
+        deliFile << "\n";
     }
     //Empties priority queue into csv in a format that can be retrieved. 
     while (!docket.empty()){
@@ -269,13 +301,14 @@ void ExportDeliveries(list<Delivery> &unscheduled, priority_queue<Delivery> &doc
             deliFile << ems->GetPrice() << ":";
             deliFile << ems->GetStock() << ":";
         }
+        deliFile << "\n";
     }
 }
 
 int main(int argc, char *argv[])
 {
     list<Delivery> unscheduled;
-    priority_queue<Delivery> docket;
+    priority_queue<Delivery, vector<Delivery>, greater<Delivery>> docket;
 
     try {
         ImportDeliveries(unscheduled, docket);
